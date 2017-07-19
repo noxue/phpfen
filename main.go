@@ -12,10 +12,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cheggaaa/pb"
 )
+
+var ps []*os.Process //保存所有的子进程
+var mux sync.Mutex   //子进程切片锁
 
 func unzip(src, dest string) error {
 	r, err := zip.OpenReader(src)
@@ -144,10 +148,15 @@ func runServer(php string, args []string) {
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, //其他变量如果不清楚可以不设定
 	}
 	//	p, err := os.StartProcess("C:\\WINDOWS\\system32\\ping.exe", []string{"C:\\WINDOWS\\system32\\ping.exe", "www.noxue.com"}, attr) //vim 打开tmp.txt文件
-	_, err := os.StartProcess(php, args, attr)
+	p, err := os.StartProcess(php, args, attr)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	mux.Lock()
+	defer mux.Unlock()
+
+	ps = append(ps, p)
 }
 
 func readConfig(path string) string {
@@ -193,32 +202,56 @@ func main() {
 	}
 
 	var f *os.File
-	if !checkFile(ConfigFile) { //如果文件存在
+	if !checkFile(ConfigFile) { //如果文件不存在
 
 		f, _ = os.Create(ConfigFile)                                                                  //创建文件
 		io.WriteString(f, "#配置方法\r\n#主机名:端口号  网站根目录路径\r\n#以#开头的为注释\r\n127.0.0.1:10010 ./www/default") //写入文件(字符串)
 		f.Close()
 	}
 
-	str := readConfig(ConfigFile)
-	strs := strings.Split(str, "\n")
-	for _, v := range strs {
-		line := strings.TrimSpace(v)
-		if len(line) > 0 && line[0] != '#' {
+	var lastModTime int64
+	//	if fileInfo, err := os.Stat("doc.go"); err == nil {
+	//		lastModTime = fileInfo.ModTime().Unix()
+	//	}
 
-			re, _ := regexp.Compile("\\s+")
-			lines := re.Split(line, 2)
-			if len(lines) == 2 {
-				go runServer(php, []string{"php.exe", fmt.Sprint("-S", lines[0]), fmt.Sprint("-t", lines[1])})
-			}
-		}
-	}
-
-	time.Sleep(time.Second * 2)
-
-	fmt.Println("\r\n\r\n-------------php粉，最简洁的php开发环境 v1.0.0----------------\n-------------一分钟搭建php开发环境\n-------------phpfen.com----------------\n-------------php粉-----------------\n服务器启动成功.....\n默认地址：127.0.0.1:10010")
 	for {
-		time.Sleep(time.Second * 100)
+		if fileInfo, err := os.Stat(ConfigFile); err == nil && fileInfo.ModTime().Unix() > lastModTime {
+
+			//已被修改，先结束以前的子进程
+			for _, v := range ps {
+				v.Kill()    //结束进程
+				v.Release() //释放资源
+			}
+
+			// 重新读取修改后的配置文件，启动服务器
+			str := readConfig(ConfigFile)
+			strs := strings.Split(str, "\n")
+			for _, v := range strs {
+				line := strings.TrimSpace(v)
+				if len(line) > 0 && line[0] != '#' {
+
+					re, _ := regexp.Compile("\\s+")
+					lines := re.Split(line, 2)
+					if len(lines) == 2 {
+						go runServer(php, []string{"php.exe", fmt.Sprint("-S", lines[0]), fmt.Sprint("-t", lines[1])})
+
+					}
+				}
+			}
+
+			//等待一秒，让提示信息显示在最后。
+			time.Sleep(time.Second * 1)
+			if lastModTime == 0 {
+				fmt.Println("\r\n\r\n-------------php粉，最简洁的php开发环境 v1.0.0----------------\n-------------一分钟搭建php开发环境\n-------------phpfen.com----------------\n-------------php粉-----------------\n服务器启动成功.....\n默认地址：127.0.0.1:10010")
+
+			} else {
+				fmt.Println("\r\n\r\n-------------------\r\n配置文件重新加载完毕！\r\n\r\n-------------------\r\n")
+			}
+
+			lastModTime = fileInfo.ModTime().Unix()
+
+		}
+		time.Sleep(time.Second * 1)
 	}
 
 }
