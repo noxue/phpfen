@@ -180,6 +180,22 @@ func checkFile(filename string) bool {
 	return exist
 }
 
+func CopyFile(dstName, srcName string) (written int64, err error) {
+	src, err := os.Open(srcName)
+	if err != nil {
+		return
+	}
+	defer src.Close()
+
+	dst, err := os.OpenFile(dstName, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return
+	}
+	defer dst.Close()
+
+	return io.Copy(dst, src)
+}
+
 func main() {
 
 	if !checkFile("php") {
@@ -187,6 +203,7 @@ func main() {
 		downFile("http://windows.php.net/downloads/releases/php-7.1.7-Win32-VC14-x64.zip")
 		unzip("php-7.1.7-Win32-VC14-x64.zip", "./php/")
 		os.Remove("./php-7.1.7-Win32-VC14-x64.zip")
+		CopyFile("./php/php.ini", "./php/php.ini-development")
 	}
 
 	php := "./php/php.exe"
