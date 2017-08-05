@@ -200,9 +200,10 @@ func main() {
 
 	if !checkFile("php") {
 		fmt.Println("开始下载PHP，根据个人网速大概将花费几分钟时间，请您耐心等待...")
-		downFile("http://windows.php.net/downloads/releases/php-7.1.7-Win32-VC14-x64.zip")
-		unzip("php-7.1.7-Win32-VC14-x64.zip", "./php/")
-		os.Remove("./php-7.1.7-Win32-VC14-x64.zip")
+		downFile("http://windows.php.net/downloads/releases/php-7.1.8-Win32-VC14-x86.zip")
+
+		unzip("php-7.1.8-Win32-VC14-x86.zip", "./php/")
+		os.Remove("./php-7.1.8-Win32-VC14-x86.zip")
 		CopyFile("./php/php.ini", "./php/php.ini-development")
 	}
 
