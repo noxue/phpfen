@@ -200,7 +200,7 @@ func main() {
 
 	if !checkFile("php") {
 		fmt.Println("开始下载PHP，根据个人网速大概将花费几分钟时间，请您耐心等待...")
-		downFile("http://windows.php.net/downloads/releases/php-7.1.8-Win32-VC14-x86.zip")
+		downFile("http://static.noxue.com/files/php-7.1.8-Win32-VC14-x86.zip")
 
 		unzip("php-7.1.8-Win32-VC14-x86.zip", "./php/")
 		os.Remove("./php-7.1.8-Win32-VC14-x86.zip")
